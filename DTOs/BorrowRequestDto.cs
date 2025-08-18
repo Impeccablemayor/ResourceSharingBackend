@@ -11,6 +11,4 @@
         public string Status { get; set; }
         public DateTime RequestDate { get; set; }
     }
-
-
 }

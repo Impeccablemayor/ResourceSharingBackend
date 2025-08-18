@@ -128,7 +128,7 @@ namespace AcademicResourceApp.Controllers
 
         // GET: api/resources/{id}
         [HttpGet("{id}")]
-        [Authorize] 
+        [Authorize]
         public async Task<IActionResult> GetById(int id)
         {
             var resource = await _context.Resources
@@ -174,7 +174,7 @@ namespace AcademicResourceApp.Controllers
 
 
         [HttpGet("notifications")]
-        [Authorize]
+        [AllowAnonymous]
         public async Task<IActionResult> GetNotifications()
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -218,7 +218,7 @@ namespace AcademicResourceApp.Controllers
             // Notify uploader
             if (resource.UploadedById.HasValue)
                 await _notificationService.NotifyAsync(resource.UploadedById.Value, "You have a new borrow request for your hardcover resource.");
-            
+
             // Notify borrower (the user making the request)
             await _notificationService.NotifyAsync(borrowerId, "Your borrow request has been submitted and is awaiting approval.");
 

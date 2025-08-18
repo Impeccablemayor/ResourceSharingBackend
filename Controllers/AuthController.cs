@@ -29,7 +29,6 @@ namespace AcademicResourceApp.Controllers
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
-
             try
             {
                 var message = await _authService.RegisterAsync(request);

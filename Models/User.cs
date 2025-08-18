@@ -12,8 +12,8 @@ namespace AcademicResourceApp.Models
         public string Role { get; set; } = "student";
         public string? SchoolEmail { get; set; }
 
-        public List<Resource> Resources { get; set; }
-        public List<BorrowTransaction> BorrowedResources { get; set; }
+        public List<Resource> Resources { get; set; } 
+        public List<BorrowTransaction> BorrowedResources { get; set; } 
 
     }
 }

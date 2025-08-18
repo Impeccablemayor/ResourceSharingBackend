@@ -19,7 +19,6 @@ namespace AcademicResourceApp.Helpers
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["Jwt:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
             var token = new JwtSecurityToken(
                 claims: claims,
                 expires: DateTime.Now.AddHours(2),

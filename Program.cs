@@ -18,13 +18,9 @@ builder.Configuration
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
     .AddUserSecrets<Program>(optional: true)
-    .AddEnvironmentVariables();  //  Use env vars from Render, Railway, etc.
-
-// Add services to the container.
-
+    .AddEnvironmentVariables();
 
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -83,17 +79,21 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         Console.WriteLine($"Database connection failed: {ex.Message}");
-        throw; // Optionally rethrow to stop app startup
+        throw;
     }
 }
 
+if (app.Environment.IsDevelopment())
+{
     app.UseSwagger();
     app.UseSwaggerUI();
-
+}
 
 app.UseHttpsRedirection();
 
 app.UseCors("AllowAllOrigins");
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 
