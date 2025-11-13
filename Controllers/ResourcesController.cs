@@ -32,7 +32,7 @@ namespace AcademicResourceApp.Controllers
         }
 
         [HttpPost("upload")]
-        [Authorize]
+        //[AllowAnonymous]
         public async Task<IActionResult> Upload([FromForm] UploadResourceDto dto)
         {
             if (dto.File == null || dto.File.Length == 0)
@@ -128,7 +128,7 @@ namespace AcademicResourceApp.Controllers
 
         // GET: api/resources/{id}
         [HttpGet("{id}")]
-        [Authorize]
+        //[Authorize]
         public async Task<IActionResult> GetById(int id)
         {
             var resource = await _context.Resources
@@ -187,7 +187,7 @@ namespace AcademicResourceApp.Controllers
 
         // POST: api/resources/{resourceId}/borrow
         [HttpPost("{resourceId}/borrow")]
-        [Authorize]
+        //[Authorize]
         public async Task<IActionResult> RequestBorrow(int resourceId)
         {
             var resource = await _context.Resources.FindAsync(resourceId);

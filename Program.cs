@@ -76,7 +76,7 @@ using (var scope = app.Services.CreateScope())
         db.Database.Migrate(); // Applies any pending migrations, creates DB if not exists
         Console.WriteLine("Database connection and migration successful.");
     }
-    catch (Exception ex)
+    catch (Exception ex)    
     {
         Console.WriteLine($"Database connection failed: {ex.Message}");
         throw;
