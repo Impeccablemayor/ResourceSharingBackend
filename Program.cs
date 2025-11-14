@@ -23,6 +23,7 @@ builder.Configuration
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddSingleton<EmailService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options =>
@@ -65,7 +66,19 @@ builder.Services.AddCors(options =>
                           .AllowAnyHeader());
 });
 
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "PeerShelf API",
+        Version = "v2"
+    });
+});
+
+
 var app = builder.Build();
+
+
 
 //just to check if the database os working fine.
 using (var scope = app.Services.CreateScope())
@@ -86,7 +99,11 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "PeerShelf API v2");
+        c.RoutePrefix = "docs"; // Swagger available at /docs
+    });
 }
 
 app.UseHttpsRedirection();

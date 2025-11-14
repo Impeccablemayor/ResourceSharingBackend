@@ -12,6 +12,13 @@ namespace AcademicResourceApp.Models
         public string Role { get; set; } = "student";
         public string? SchoolEmail { get; set; }
 
+        public bool IsEmailVerified { get; set; } = false;
+        public string? EmailVerificationCode { get; set; } // 6-digit OTP
+        public DateTime? CodeExpiry { get; set; }
+
+        public bool IsInstitutionVerified { get; set; } = false;
+        public bool IsActive { get; set; } = false;
+
         public List<Resource> Resources { get; set; } 
         public List<BorrowTransaction> BorrowedResources { get; set; } 
 
