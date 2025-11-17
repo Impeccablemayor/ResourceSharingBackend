@@ -18,6 +18,7 @@ namespace AcademicResourceApp.Services
             var settings = _config.GetSection("EmailSettings");
             using var client = new SmtpClient(settings["Host"], int.Parse(settings["Port"]))
             {
+                UseDefaultCredentials = false,
                 Credentials = new NetworkCredential(settings["Username"], settings["Password"]),
                 EnableSsl = true
             };

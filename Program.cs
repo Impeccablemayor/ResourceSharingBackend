@@ -4,6 +4,7 @@ using AcademicResourceApp.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using System.Text;
 
 
@@ -14,15 +15,15 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 });
 
 builder.Configuration
-    .SetBasePath(Directory.GetCurrentDirectory())
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddJsonFile("appsettings.json", optional: false)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
     .AddUserSecrets<Program>(optional: true)
     .AddEnvironmentVariables();
 
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+//builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<EmailService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -52,7 +53,7 @@ builder.Services.AddSingleton(x =>
     return new CloudinaryDotNet.Cloudinary(account);
 });
 
-builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<AuthService>(); 
 
 builder.Services.AddScoped<Microsoft.AspNetCore.Identity.IPasswordHasher<AcademicResourceApp.Models.User>, Microsoft.AspNetCore.Identity.PasswordHasher<AcademicResourceApp.Models.User>>();
 
@@ -68,17 +69,41 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    c.SwaggerDoc("v2", new Microsoft.OpenApi.Models.OpenApiInfo
     {
         Title = "PeerShelf API",
         Version = "v2"
     });
+//    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+//    {
+//        In = ParameterLocation.Header,
+//        Description = "Enter JWT token: Bearer {your token}",
+//        Name = "Authorization",
+//        Type = SecuritySchemeType.ApiKey,
+//    });
+
+//    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+//{
+//    {
+//        new OpenApiSecurityScheme
+//        {
+//            Reference = new OpenApiReference
+//            {
+//                Type = ReferenceType.SecurityScheme,
+//                Id = "Bearer"
+//            }
+//        },
+//        new string[] {}
+//    }
+//});
+
 });
 
 
 var app = builder.Build();
 
 
+app.MapGet("/health", () => Results.Ok("API is running"));
 
 //just to check if the database os working fine.
 using (var scope = app.Services.CreateScope())
@@ -101,10 +126,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "PeerShelf API v2");
+        c.SwaggerEndpoint("/swagger/v2/swagger.json", "PeerShelf API v2");
         c.RoutePrefix = "docs"; // Swagger available at /docs
     });
 }
+
+
+
 
 app.UseHttpsRedirection();
 
