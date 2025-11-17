@@ -25,13 +25,13 @@ namespace AcademicResourceApp.Controllers
         }
 
         // Test the email
-        [HttpGet("test-email")]
-        public async Task<IActionResult> TestEmail([FromServices] EmailService emailService)
-        {
-            await emailService.SendEmailAsync("binuyomayor16@gmail.com", "Test Email", "Email service is working!");
+        //[HttpGet("test-email")]
+        //public async Task<IActionResult> TestEmail([FromServices] EmailService emailService)
+        //{
+        //    await emailService.SendEmailAsync("binuyomayor16@gmail.com", "Test Email", "Email service is working!");
 
-            return Ok(new { message = "Email sent successfully!" });
-        }
+        //    return Ok(new { message = "Email sent successfully!" });
+        //}
 
 
         // ---------------- REGISTER ----------------

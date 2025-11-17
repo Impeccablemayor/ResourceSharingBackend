@@ -16,16 +16,31 @@ namespace AcademicResourceApp.Services
         public async Task SendEmailAsync(string toEmail, string subject, string htmlBody)
         {
             var settings = _config.GetSection("EmailSettings");
-            using var client = new SmtpClient(settings["Host"], int.Parse(settings["Port"]))
+            var host = settings["Host"];
+            var port = int.TryParse(settings["Port"], out var p) ? p : 587;
+            var username = settings["Username"];
+            var password = settings["Password"];
+            var fromEmail = settings["FromEmail"];
+            var fromName = settings["FromName"];
+
+            // If Username is not a full email, fall back to FromEmail to avoid misconfiguration
+            if (string.IsNullOrWhiteSpace(username) || !username.Contains("@"))
             {
-                UseDefaultCredentials = false,
-                Credentials = new NetworkCredential(settings["Username"], settings["Password"]),
-                EnableSsl = true
+                username = fromEmail;
+            }
+
+            using var client = new SmtpClient(host, port)
+            {
+                UseDefaultCredentials = false, // must be false when supplying explicit credentials
+                Credentials = new NetworkCredential(username, password),
+                EnableSsl = true,
+                DeliveryMethod = SmtpDeliveryMethod.Network,
+                Timeout = 20000
             };
 
             var mail = new MailMessage
             {
-                From = new MailAddress(settings["FromEmail"], settings["FromName"]),
+                From = new MailAddress(fromEmail, fromName),
                 Subject = subject,
                 Body = htmlBody,
                 IsBodyHtml = true
