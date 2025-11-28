@@ -1,11 +1,10 @@
 ﻿using AcademicResourceApp.Data;
 using AcademicResourceApp.DTOs;
-using AcademicResourceApp.Helpers;
-using AcademicResourceApp.Models;
 using AcademicResourceApp.Services;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using AcademicResourceApp.Helpers;
 
 namespace AcademicResourceApp.Controllers
 {
@@ -25,13 +24,13 @@ namespace AcademicResourceApp.Controllers
         }
 
         // Test the email
-        //[HttpGet("test-email")]
-        //public async Task<IActionResult> TestEmail([FromServices] EmailService emailService)
-        //{
-        //    await emailService.SendEmailAsync("binuyomayor16@gmail.com", "Test Email", "Email service is working!");
+        [HttpGet("test-email")]
+        public async Task<IActionResult> TestEmail([FromServices] EmailService emailService)
+        {
+            await emailService.SendEmailAsync("binuyomayor16@gmail.com", "Test Email", "Email service is working!");
 
-        //    return Ok(new { message = "Email sent successfully!" });
-        //}
+            return Ok(new { message = "Email sent successfully!" });
+        }
 
 
         // ---------------- REGISTER ----------------
@@ -103,12 +102,13 @@ namespace AcademicResourceApp.Controllers
             if (user == null || string.IsNullOrEmpty(user.PasswordHash))
                 return Unauthorized("Invalid credentials.");
 
-            if (!user.IsEmailVerified || !user.IsInstitutionVerified)
-                return Unauthorized("Account not fully verified.");
-
             var result = _authService.PasswordHasher.VerifyHashedPassword(user, user.PasswordHash, dto.Password);
             if (result == PasswordVerificationResult.Failed)
                 return Unauthorized("Invalid credentials.");
+
+            // Only require email verification for now
+            if (!user.IsEmailVerified)
+                return Unauthorized("Email not verified.");
 
             var token = JwtHelper.GenerateToken(user, _config);
             return Ok(new { token });

@@ -45,11 +45,12 @@ public class AuthService
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        // Send OTP via Gmail SMTP
+        // Send OTP to school email if provided, otherwise to primary email
+        var sendTo = string.IsNullOrWhiteSpace(user.SchoolEmail) ? user.Email : user.SchoolEmail.Trim();
         var htmlContent = $"<p>Your PeerShelf verification code is: <b>{user.EmailVerificationCode}</b></p>";
-        await _emailService.SendEmailAsync(user.Email, "Verify your email", htmlContent);
+        await _emailService.SendEmailAsync(sendTo, "Verify your email", htmlContent);
 
-        return "Registration successful! Please check your email for the OTP.";
+        return $"Registration successful! Please check {sendTo} for the OTP.";
     }
 
     // ---------------- VERIFY EMAIL ----------------
@@ -71,6 +72,7 @@ public class AuthService
     }
 
     // ---------------- VERIFY INSTITUTION ----------------
+    // Left available for future use (no enforcement by login anymore)
     public async Task<string> VerifyInstitutionAsync(string email, string inviteCode)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
@@ -78,13 +80,37 @@ public class AuthService
         if (!user.IsEmailVerified) throw new ApplicationException("Email not verified yet");
         if (user.IsInstitutionVerified) return "Institution already verified";
 
-        // Hardcoded Unilorin code (can later be in DB/config)
-        var secretCode = _config["Institution:InviteCode"];
-        if (inviteCode != secretCode) throw new ApplicationException("Invalid institution invite code");
+        // Get single allowed domain and optional admin invite code from config
+        var allowedDomain = _config["Institution:AllowedDomain"]?.Trim().ToLowerInvariant();
+        var secretCode = _config["Institution:InviteCode"]?.Trim();
+
+        // 1) If an invite code was supplied, accept it if it matches the configured secret.
+        if (!string.IsNullOrWhiteSpace(inviteCode))
+        {
+            if (!string.IsNullOrWhiteSpace(secretCode) && inviteCode.Trim() == secretCode)
+            {
+                user.IsInstitutionVerified = true;
+                await _context.SaveChangesAsync();
+                return "Institution verified successfully!";
+            }
+
+            throw new ApplicationException("Invalid invite code");
+        }
+
+        // 2) Otherwise verify by email domain (school email preferred)
+        var addressToCheck = user.SchoolEmail ?? user.Email;
+        var atIndex = addressToCheck?.LastIndexOf('@') ?? -1;
+        if (atIndex <= 0) throw new ApplicationException("No valid email to verify against");
+
+        var domain = addressToCheck.Substring(atIndex + 1).ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(allowedDomain))
+            throw new ApplicationException("Institution allowed domain not configured");
+
+        if (domain != allowedDomain)
+            throw new ApplicationException("Email domain is not allowed for this platform");
 
         user.IsInstitutionVerified = true;
         await _context.SaveChangesAsync();
-
         return "Institution verified successfully!";
     }
 }
