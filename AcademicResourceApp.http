@@ -1,6 +1,10 @@
-@AcademicResourceApp_HostAddress = http://localhost:5288
+@AcademicResourceApp_HostAddress = https://localhost:7190
 
 GET {{AcademicResourceApp_HostAddress}}/weatherforecast/
 Accept: application/json
+
+###
+
+GET {{AcademicResourceApp_HostAddress}}/health
 
 ###

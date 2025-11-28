@@ -99,6 +99,8 @@ namespace AcademicResourceApp.Controllers
             }
 
             return Ok(new { message = "Resource uploaded successfully!", url = resource.FileUrl });
+
+           
         }
 
         [HttpGet]
