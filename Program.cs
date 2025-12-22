@@ -1,5 +1,6 @@
 using AcademicResourceApp.Data;
 using AcademicResourceApp.Helpers;
+using AcademicResourceApp.Hubs;
 using AcademicResourceApp.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +25,7 @@ builder.Configuration
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 //builder.Services.AddSwaggerGen();
+builder.Services.AddSignalR();
 builder.Services.AddSingleton<EmailService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -101,10 +103,6 @@ builder.Services.AddSwaggerGen(c =>
 
 
 var app = builder.Build();
-
-
-app.MapGet("/health", () => Results.Ok("API is running"));
-
 //just to check if the database os working fine.
 using (var scope = app.Services.CreateScope())
 {
@@ -114,12 +112,16 @@ using (var scope = app.Services.CreateScope())
         db.Database.Migrate(); // Applies any pending migrations, creates DB if not exists
         Console.WriteLine("Database connection and migration successful.");
     }
-    catch (Exception ex)    
+    catch (Exception ex)
     {
         Console.WriteLine($"Database connection failed: {ex.Message}");
         throw;
     }
 }
+
+app.MapGet("/health", () => Results.Ok("API is running"));
+
+
 
 if (app.Environment.IsDevelopment())
 {
@@ -131,9 +133,6 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-
-
-
 app.UseHttpsRedirection();
 
 app.UseCors("AllowAllOrigins");
@@ -143,5 +142,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<NotificationHub>("/notificationHub");
 
 app.Run();

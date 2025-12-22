@@ -7,10 +7,7 @@ using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
 using System.Security.Claims;
-using System.Threading.Tasks;
-
 namespace AcademicResourceApp.Controllers
 {
     [ApiController]
@@ -18,12 +15,12 @@ namespace AcademicResourceApp.Controllers
     public class ResourcesController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private readonly CloudinaryDotNet.Cloudinary _cloudinary;
+        private readonly Cloudinary _cloudinary;
         private readonly NotificationService _notificationService;
 
         public ResourcesController(
             AppDbContext context,
-            CloudinaryDotNet.Cloudinary cloudinary,
+            Cloudinary cloudinary,
             NotificationService notificationService)
         {
             _context = context;
@@ -31,8 +28,16 @@ namespace AcademicResourceApp.Controllers
             _notificationService = notificationService;
         }
 
+        /// <summary>
+        /// Upload a new resource to the platform.
+        /// </summary>
+        /// <param name="dto">Resource upload data (file, metadata, optional image)</param>
+        /// <returns>Success message and uploaded file URL</returns>
+        /// <response code="200">Resource uploaded successfully</response>
+        /// <response code="400">Invalid file or missing data</response>
+        /// <response code="500">Cloudinary upload failed</response>
         [HttpPost("upload")]
-        //[AllowAnonymous]
+        //[Authorize]
         public async Task<IActionResult> Upload([FromForm] UploadResourceDto dto)
         {
             if (dto.File == null || dto.File.Length == 0)
@@ -51,11 +56,9 @@ namespace AcademicResourceApp.Controllers
 
             // Get uploaderId from claims
             Guid? uploaderId = null;
-            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (Guid.TryParse(userId, out var parsedId))
-            {
                 uploaderId = parsedId;
-            }
 
             // Upload hardcover image if applicable
             string? imageUrl = null;
@@ -89,20 +92,27 @@ namespace AcademicResourceApp.Controllers
                 MeetupLocation = dto.Type == "Hardcover" ? dto.MeetupLocation : null,
                 ImageUrl = imageUrl
             };
+
             _context.Resources.Add(resource);
             await _context.SaveChangesAsync();
 
-            // This will notify the user of the file upload
+            // Notify uploader
             if (uploaderId.HasValue)
             {
-                await _notificationService.NotifyAsync(uploaderId.Value, $"Your resource '{resource.Title}' was uploaded successfully.");
+                await _notificationService.NotifyAsync(
+                    uploaderId.Value,
+                    "Resource Uploaded",
+                    $"Your resource '{resource.Title}' was uploaded successfully.",
+                    NotificationType.Approval
+                );
             }
 
             return Ok(new { message = "Resource uploaded successfully!", url = resource.FileUrl });
-
-           
         }
 
+        /// <summary>
+        /// Get all resources.
+        /// </summary>
         [HttpGet]
         [AllowAnonymous]
         public async Task<IActionResult> GetAll()
@@ -128,7 +138,9 @@ namespace AcademicResourceApp.Controllers
             return Ok(resources);
         }
 
-        // GET: api/resources/{id}
+        /// <summary>
+        /// Get a resource by its ID.
+        /// </summary>
         [HttpGet("{id}")]
         //[Authorize]
         public async Task<IActionResult> GetById(int id)
@@ -140,15 +152,13 @@ namespace AcademicResourceApp.Controllers
             if (resource == null)
                 return NotFound();
 
-            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             Guid? currentUserId = null;
             if (Guid.TryParse(userId, out var parsedId))
                 currentUserId = parsedId;
 
-            // Check if current user is uploader
             bool isUploader = resource.UploadedById == currentUserId;
 
-            // Check if current user is the approved borrower
             bool isApprovedBorrower = await _context.BorrowTransactions
                 .AnyAsync(bt => bt.ResourceId == resource.Id && bt.BorrowerId == currentUserId && bt.Status == BorrowStatus.Approved);
 
@@ -174,20 +184,24 @@ namespace AcademicResourceApp.Controllers
             return Ok(dto);
         }
 
-
+        /// <summary>
+        /// Get all notifications for the current user.
+        /// </summary>
         [HttpGet("notifications")]
-        [AllowAnonymous]
+        //[Authorize]
         public async Task<IActionResult> GetNotifications()
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var notifications = await _context.Notifications
-                .Where(n => n.UserId.ToString() == userId)
-                .OrderByDescending(n => n.CreatedAt)
-                .ToListAsync();
+            if (!Guid.TryParse(userId, out var parsedId))
+                return Unauthorized();
+
+            var notifications = await _notificationService.GetAllAsync(parsedId);
             return Ok(notifications);
         }
 
-        // POST: api/resources/{resourceId}/borrow
+        /// <summary>
+        /// Request to borrow a hardcover resource.
+        /// </summary>
         [HttpPost("{resourceId}/borrow")]
         //[Authorize]
         public async Task<IActionResult> RequestBorrow(int resourceId)
@@ -200,7 +214,6 @@ namespace AcademicResourceApp.Controllers
             if (!Guid.TryParse(userId, out var borrowerId))
                 return Unauthorized();
 
-            // Prevent duplicate pending requests for the same requests
             bool alreadyRequested = await _context.BorrowTransactions
                 .AnyAsync(bt => bt.ResourceId == resourceId && bt.BorrowerId == borrowerId && bt.Status == BorrowStatus.Pending);
 
@@ -219,15 +232,29 @@ namespace AcademicResourceApp.Controllers
 
             // Notify uploader
             if (resource.UploadedById.HasValue)
-                await _notificationService.NotifyAsync(resource.UploadedById.Value, "You have a new borrow request for your hardcover resource.");
+            {
+                await _notificationService.NotifyAsync(
+                    resource.UploadedById.Value,
+                    "New Borrow Request",
+                    "You have a new borrow request for your hardcover resource.",
+                    NotificationType.Request
+                );
+            }
 
-            // Notify borrower (the user making the request)
-            await _notificationService.NotifyAsync(borrowerId, "Your borrow request has been submitted and is awaiting approval.");
+            // Notify borrower
+            await _notificationService.NotifyAsync(
+                borrowerId,
+                "Borrow Request Submitted",
+                "Your borrow request has been submitted and is awaiting approval.",
+                NotificationType.Pending
+            );
 
             return Ok(new { message = "Borrow request submitted." });
         }
 
-        // POST: api/resources/borrow/{transactionId}/approve
+        /// <summary>
+        /// Approve a borrow request.
+        /// </summary>
         [HttpPost("borrow/{transactionId}/approve")]
         [Authorize]
         public async Task<IActionResult> ApproveBorrow(int transactionId)
@@ -246,10 +273,8 @@ namespace AcademicResourceApp.Controllers
             if (transaction.Resource.Type != "Hardcover")
                 return BadRequest("Only hardcover resources can be borrowed.");
 
-            // Approve this transaction
             transaction.Status = BorrowStatus.Approved;
 
-            // Reject all other pending requests for this resource
             var otherPending = await _context.BorrowTransactions
                 .Where(bt => bt.ResourceId == transaction.ResourceId && bt.Id != transactionId && bt.Status == BorrowStatus.Pending)
                 .ToListAsync();
@@ -259,28 +284,40 @@ namespace AcademicResourceApp.Controllers
 
             await _context.SaveChangesAsync();
 
-            // Notify the borrower
-            await _notificationService.NotifyAsync(transaction.BorrowerId, "Your borrow request was approved!");
+            // Notify approved borrower
+            await _notificationService.NotifyAsync(
+                transaction.BorrowerId,
+                "Borrow Request Approved",
+                "Your borrow request was approved!",
+                NotificationType.Approval
+            );
 
-            // Notify rejected users
+            // Notify rejected borrowers
             foreach (var bt in otherPending)
-                await _notificationService.NotifyAsync(bt.BorrowerId, "Your borrow request was rejected.");
+            {
+                await _notificationService.NotifyAsync(
+                    bt.BorrowerId,
+                    "Borrow Request Rejected",
+                    "Your borrow request was rejected.",
+                    NotificationType.Pending
+                );
+            }
 
             return Ok(new { message = "Borrow request approved." });
         }
 
-        // GET: api/resources/{resourceId}/borrow-requests
+        /// <summary>
+        /// Get all borrow requests for a resource (uploader only).
+        /// </summary>
         [HttpGet("{resourceId}/borrow-requests")]
         [Authorize]
         public async Task<IActionResult> GetBorrowRequestsForResource(int resourceId)
         {
-            var resource = await _context.Resources
-                .FirstOrDefaultAsync(r => r.Id == resourceId);
-
+            var resource = await _context.Resources.FirstOrDefaultAsync(r => r.Id == resourceId);
             if (resource == null)
                 return NotFound();
 
-            var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!Guid.TryParse(userId, out var uploaderId) || resource.UploadedById != uploaderId)
                 return Forbid("Only the uploader can view borrow requests for this resource.");
 
